@@ -1,7 +1,7 @@
 {
-  "name": "MCHGC",
+  "name": "MNCHGC",
   "description": "Set Max Charging Current (for parallel units)",
-  "help": "MCHGC040 (set unit 0 to max charging current of 40A)",
+  "help": "MNCHGC0040 (first zero is parallel inverter, remainder is current, set unit 0 to max charging current of 40A)",
   "type": "SETTER",
   "response": [
           ["ack", "Command execution", {"NAK": "Failed", "ACK": "Successful"}]

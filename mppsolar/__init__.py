@@ -9,6 +9,7 @@ log = logging.getLogger('MPP-Solar')
 
 
 def main():
+    print('bla')
     parser = ArgumentParser(description='MPP Solar Command Utility')
     parser.add_argument('-c', '--command', help='Command to run', default='QID')
     parser.add_argument('-D', '--enableDebug', action='store_true', help='Enable Debug')
