@@ -1,0 +1,13 @@
+{
+    "name": "QMN",
+    "description": "Device model name inquiry",
+    "help": "  Requests the device mode name",
+    "type": "QUERY",
+    "response": [
+            ["string", "model name", ""]
+        ],
+    "test_responses": [
+           "(9293333010501\u00bb\u0007\r"
+        ],
+	"regex": ""
+}

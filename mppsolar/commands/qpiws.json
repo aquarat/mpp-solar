@@ -4,7 +4,7 @@
     "type": "QUERY",
     "response": [
         ["stat_flags", "Warning status", [
-            "Reserved",
+            "PV loss",
             "Inverter fault",
             "Bus over fault",
             "Bus under fault",
@@ -19,7 +19,7 @@
             "Battery low alarm warning",
             "Reserved",
             "Battery under shutdown warning",
-            "Reserved",
+            "Battery derating",
             "Overload fault",
             "EEPROM fault",
             "Inverter over current fault",
@@ -34,8 +34,12 @@
             "MPPT overload fault",
             "MPPT overload warning",
             "Battery too low to charge warning",
-            "Reserved",
-            "Reserved"
+            "DC-DC over current",
+            "D Fault code",
+            "D 02 Fault code",
+            "Low PV energy",
+            "High AC input during bus soft start",
+            "Battery equalisation"
             ]
         ]
         ],

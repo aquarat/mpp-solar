@@ -9,5 +9,6 @@
     "test_responses": [
            "(PI30\u009a\u000b\r"
         ],
-	"regex": ""
+	"regex": "",
+	"checked": "yes"
 }

@@ -4,7 +4,7 @@
   "help": "",
   "type": "QUERY",
   "response": [
-        ["keyed", "Device Mode", {"P": "Power on", "S": "Standby", "L": "Line", "B": "Battery", "F": "Fault", "H": "Power saving"}]
+        ["keyed", "Device Mode", {"P": "Power on", "S": "Standby", "L": "Line", "B": "Battery", "F": "Fault", "H": "Power Saving", "D": "Shutdown", "C": "Charge", "Y": "Bypass", "E": "Eco"}]
       ],
   "test_responses": [
          "(Se5d9\r"

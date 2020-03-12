@@ -13,7 +13,7 @@ def main():
     parser = ArgumentParser(description='MPP Solar Command Utility')
     parser.add_argument('-c', '--command', help='Command to run', default='QID')
     parser.add_argument('-D', '--enableDebug', action='store_true', help='Enable Debug')
-    parser.add_argument('-d', '--device', type=str, help='Serial device to communicate with', default='/dev/ttyUSB0')
+    parser.add_argument('-d', '--device', type=str, help='Serial device to communicate with', default='/dev/hidraw0')
     parser.add_argument('-b', '--baud', type=int, help='Baud rate for serial communications', default=2400)
     parser.add_argument('-l', '--listknown', action='store_true', help='List known commands')
     parser.add_argument('-s', '--getStatus', action='store_true', help='Get Inverter Status')

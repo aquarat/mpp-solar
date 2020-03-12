@@ -195,13 +195,20 @@ class mppCommand(object):
                 msgs[key] = [result, resp_format[2]]
             # eg. ['option', 'Output source priority', ['Utility first', 'Solar first', 'SBU first']],
             elif (resp_format[0] == 'option'):
-                msgs[key] = [resp_format[2][int(result)], '']
+                print("option", int(result))
+                if len(resp_format[2]) > int(result):
+                    msgs[key] = [resp_format[2][int(result)], '']
+                else:
+                    msgs[key] = [result, '']
+                    print("BLEH")
+
             # eg. ['keyed', 'Machine type', {'00': 'Grid tie', '01': 'Off Grid', '10': 'Hybrid'}],
             elif (resp_format[0] == 'keyed'):
                 msgs[key] = [resp_format[2][result], '']
             # eg. ['flags', 'Device status', [ 'is_load_on', 'is_charging_on' ...
             elif (resp_format[0] == 'flags'):
                 for j, flag in enumerate(result):
+                    print("flags", j, flag)
                     msgs[resp_format[2][j]] = [int(flag), 'True - 1/False - 0']
             # eg. ['stat_flags', 'Warning status', ['Reserved', 'Inver...
             elif (resp_format[0] == 'stat_flags'):
