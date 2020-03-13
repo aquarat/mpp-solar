@@ -1,6 +1,6 @@
-# MPP Solar Inverter Python Package
+# Voltronic Axpert King Inverter MQTT Bridge
 
-Python library and query/monitoring application for the Voltronic Axpert King Series of Hybrid Inverters.
+Python query/monitoring application for the Voltronic Axpert King Series of Hybrid Inverters.
 
 This application specifically targets the PIP-5048MK type inverter.
 
@@ -11,9 +11,14 @@ More info:
 - Protocol definition: https://forums.aeva.asn.au/download/file.php?id=1376
 - General community discussion: https://forums.aeva.asn.au/viewtopic.php?f=64&t=5955
 
+## Pictures
+![HA Lovelace Card](/images/ha-lovelace-card.png?raw=true "A Lovelace card in the Home Assistant web interface.")
+![HA Graph](/images/example-ha-graph.png?raw=true "A Lovelace graph in the Home Assistant web interface.")
+![RPi Zero W](/images/rpi-zero-w-backpowered.jpg?raw=true "An RPi Zero W being back-powered from the inverter's USB OTG port.")
+
 ## Notes
-- This app is now functional - it just need polishing.
-- My goal is to integrate the unit into Home Assistant via an MQTT broker.
+- This app is now functional - it just needs polishing.
+- My goal is to integratemy Axpert King inverter into Home Assistant via an MQTT broker.
 - Home Assistant sensor definitions are present for most fields of interest at the bottom of this file.
 
 ## TODO
