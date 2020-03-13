@@ -18,7 +18,7 @@ More info:
 
 ## Notes
 - This app is now functional - it just needs polishing.
-- My goal is to integratemy Axpert King inverter into Home Assistant via an MQTT broker.
+- My goal is to integrate my Axpert King inverter into Home Assistant via an MQTT broker.
 - Home Assistant sensor definitions are present for most fields of interest at the bottom of this file.
 
 ## TODO
