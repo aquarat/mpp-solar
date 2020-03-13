@@ -25,10 +25,13 @@ class mppUtils:
     MPP Solar Inverter Utility Library
     """
 
+    serial_number = None
+
     def __init__(self, serial_device=None, baud_rate=2400):
         if (serial_device is None):
             raise NoDeviceError("A serial device must be supplied, e.g. /dev/ttyUSB0")
         self.inverter = mppInverter(serial_device, baud_rate)
+        self.getSerialNumber()
 
     def getKnownCommands(self):
         return self.inverter.getAllCommands()
@@ -40,16 +43,20 @@ class mppUtils:
         return self.inverter.execute(cmd).getResponse()
 
     def getSerialNumber(self):
-        return self.inverter.getSerialNumber()
+        if self.serial_number is None:
+            self.serial_number = self.inverter.getSerialNumber()
 
-    def getFullStatus(self):
+        return self.serial_number
+
+    def getFullStatus(self, queries="Q1,QPIGS"):
         """
         Helper function that returns all the status data
         """
         status = {}
         # serial_number = self.getSerialNumber()
-        data = self.getResponseDict("Q1")
-        data.update(self.getResponseDict("QPIGS"))
+        data = {}
+        for i in queries.split(","):
+            data.update(self.getResponseDict(i))
 
         # Need to get 'Parallel' info, but dont know what the parallel number for the correct inverter is...
         # parallel_data = self.mp.getResponseDict("QPGS0")

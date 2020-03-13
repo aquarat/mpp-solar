@@ -84,7 +84,7 @@ def isDirectUsbDevice(serial_device):
     """
     if not serial_device:
         return False
-    match = re.search("^.*hidraw\\d$", serial_device)
+    match = re.search("^.*hidraw\\d$", str(serial_device))
     if match:
         log.debug("Device matches hidraw regex")
         return True
@@ -235,20 +235,32 @@ class mppInverter:
         command.setResponse(response_line)
         return command
 
+    locked = False
+
     def execute(self, cmd):
         """
         Sends a command (as supplied) to inverter and returns the raw response
         """
-        command = self._getCommand(cmd)
-        if command is None:
-            log.critical("Command not found")
-            return None
-        elif (self._test_device):
-            log.debug('TEST connection: executing %s', command)
-            return self._doTestCommand(command)
-        elif (self._direct_usb):
-            log.debug('DIRECT USB connection: executing %s', command)
-            return self._doDirectUsbCommand(command)
-        else:
-            log.debug('SERIAL connection: executing %s', command)
-            return self._doSerialCommand(command)
+        while self.locked:
+            time.sleep(0.1)
+        self.locked = True
+
+        try:
+            command = self._getCommand(cmd)
+            doCommand = None
+            if command is None:
+                log.critical("Command not found")
+            elif (self._test_device):
+                log.debug('TEST connection: executing %s', command)
+                doCommand = self._doTestCommand(command)
+            elif (self._direct_usb):
+                log.debug('DIRECT USB connection: executing %s', command)
+                doCommand = self._doDirectUsbCommand(command)
+            else:
+                log.debug('SERIAL connection: executing %s', command)
+                doCommand = self._doSerialCommand(command)
+        except:
+            pass
+        self.locked = False
+
+        return doCommand

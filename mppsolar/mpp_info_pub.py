@@ -9,25 +9,16 @@
 # - posts results to MQTT broker
 # - uses mpputils.py / mppcommands.py to abstract PIP communications
 #
+import json
 import logging
+import sys
+
 import paho.mqtt.publish as publish
 import paho.mqtt.client as mqtt
 from .mpputils import mppUtils, log
-import threading
+import time
 
 grab_settings = False
-
-
-def conformNumber(number):
-    try:
-        if number.isdigit() and '.' in number:
-            return float(number)
-        elif number.isdigit():
-            return int(number)
-        else:
-            return number
-    except:
-        return number
 
 
 def main():
@@ -47,6 +38,7 @@ def main():
     parser.add_argument('-O', '--onceoff', action='store_true', help='Run Once-Off')
     parser.add_argument('-I', '--interval', type=int, help='Number of seconds between publishing telemetry', default=30)
     parser.add_argument('-L', '--listen', action='store_true', help='Listen for commands')
+    parser.add_argument('-Q', '--queries', type=str, help='Queries to run per loop in CSV format', default='Q1,QPIGS')
     args = parser.parse_args()
 
     #
@@ -61,8 +53,6 @@ def main():
         # add the handlers to logger
         log.addHandler(ch)
 
-    print(args)
-
     mpp = MPPSolarMain(args)
     mpp.run()
 
@@ -70,19 +60,65 @@ def main():
 class MPPSolarMain:
     args = None
     mq = None
+    lastPubRun = 0
+    mqttConnected = False
+    devs = []
 
     def __init__(self, someArgs):
         self.args = someArgs
+        ports = self.args.device.split(',')
+
+        for usb_port in ports:
+            mp = mppUtils(serial_device=usb_port, baud_rate=self.args.baud)
+            self.devs.append(mp)
+
+            # Collect Inverter Settings and publish
+            if self.args.grabsettings:
+                msgs = []
+                settings = mp.getSettings()
+
+                for setting in settings:
+                    for i in ['value', 'default', 'unit']:
+                        topic = '/{}/{}/settings/{}/{}'.format(self.args.prefix, mp.serial_number, setting, i)
+                        msg = {'topic': topic, 'payload': '{}'.format(settings[setting][i])}
+                        msgs.append(msg)
+                # publish.multiple(msgs, hostname=args.broker)
+                log.debug(msgs)
+                log.debug(self.args.broker)
+
+    def conformNumber(self, number):
+        try:
+            if number.isdigit() and '.' in number:
+                return float(number)
+            elif number.isdigit():
+                return int(number)
+            else:
+                return number
+        except:
+            return number
+
+    def getTime(self):
+        return int(round(time.time() * 1000))
 
     def run(self):
         if self.args.onceoff:
             self.publishTelemetry()
             return
 
-        threading.Timer(self.args.interval, self.publishTelemetry).start()
-
+        # threading.Timer(self.args.interval, self.publishTelemetry).start()
         self.initialiseClient()
 
+        while True:
+            if not self.mqttConnected:
+                time.sleep(1)
+                continue
+
+            if (self.getTime() - self.lastPubRun) > self.args.interval * 1000:
+                self.publishTelemetry()
+                self.lastPubRun = self.getTime()
+
+            self.mq.loop()
+            time.sleep(0.01)
 
     def initialiseClient(self):
         self.mq = mqtt.Client(clean_session=True, userdata=None, transport="tcp")
@@ -92,65 +128,65 @@ class MPPSolarMain:
         self.mq.on_message = self.handleMessage
         self.mq.on_connect = self.handleConnect
         self.mq.connect(self.args.broker,
-                              port=self.args.brokerport,
-                              keepalive=30)
-        self.mq.loop_forever()
-        # self.mq.loop_start()
-
-
+                        port=self.args.brokerport,
+                        keepalive=30)
+        # self.mq.loop_forever()
+        self.mq.loop_start()
 
     def handleMessage(self, client, userdata, message):
-        log.debug(["got message", client, message])
+        log.debug(["got message", client, message.topic, str(message.payload)])
         if self.args.listen:
             print(client, message)
 
+        payload = str(message.payload)
+        args = str(message.topic).split('/')
+        # "/inverters/92932001102598/settings/bla"
+        print(args)  # ['', 'inverters', '92932001102598', 'settings', 'PCVV59.3']
+        serialNumber = args[2]
+        command = args[4]
+
+        log.debug("got command")
+        print(command)
+        resp = self.mp.getResponse(command)
+        log.debug(resp)
+        # resp = json.dumps(resp)
+        # log.debug(resp)
+        # print(str(resp))
+        self.mq.publish("/" + args[1] + "/" + args[2] + "/response", resp)
+
     def handleDisconnect(self, client, userdata, rc):
         log.debug(["got disconnected", client, userdata, rc])
-        mqttConnected = False
+        self.mqttConnected = False
 
         self.initialiseClient()
 
     def handleConnect(self, client, userdata, flags, rc, properties=None):
-        mqttConnected = True
+        self.mqttConnected = True
         self.mq.subscribe('/{}/+/settings/#'.format(self.args.prefix))
 
     def publishTelemetry(self):
-        # Process / loop through all supplied devices
-        for usb_port in self.args.device.split(','):
-            mp = mppUtils(usb_port, self.args.baud)
-            serial_number = mp.getSerialNumber()
-
-            # Collect Inverter Settings and publish
-            if self.args.grabsettings:
+        try:
+            # Process / loop through all supplied devices
+            for dev in self.devs:
+                # Collect Inverter Status data and publish
                 msgs = []
-                settings = mp.getSettings()
-
-                for setting in settings:
-                    for i in ['value', 'default', 'unit']:
-                        topic = '/{}/{}/settings/{}/{}'.format(self.args.prefix, serial_number, setting, i)
-                        msg = {'topic': topic, 'payload': '{}'.format(settings[setting][i])}
-                        msgs.append(msg)
-                # publish.multiple(msgs, hostname=args.broker)
+                status_data = dev.getFullStatus(queries=self.args.queries)
+                for status_line in status_data:
+                    for i in ['value', 'unit']:
+                        if (self.args.publishunits and i is 'unit') or (
+                                self.args.publishunits is False and i is not 'unit'):
+                            # 92931509101901/status/total_output_active_power/value 1250
+                            # 92931509101901/status/total_output_active_power/unit W
+                            topic = '/{}/{}/status/{}/{}'.format(self.args.prefix, dev.serial_number, status_line, i)
+                            msg = {'topic': topic, 'payload': '{}'.format(self.conformNumber(status_data[status_line][i]))}
+                            msgs.append(msg)
+                for msg in msgs:
+                    self.mq.publish(msg["topic"], payload=msg["payload"])
                 log.debug(msgs)
                 log.debug(self.args.broker)
-
-            # Collect Inverter Status data and publish
-            msgs = []
-            status_data = mp.getFullStatus()
-            for status_line in status_data:
-                for i in ['value', 'unit']:
-                    if (self.args.publishunits and i is 'unit') or (
-                            self.args.publishunits is False and i is not 'unit'):
-                        # 92931509101901/status/total_output_active_power/value 1250
-                        # 92931509101901/status/total_output_active_power/unit W
-                        topic = '/{}/{}/status/{}/{}'.format(self.args.prefix, serial_number, status_line, i)
-                        msg = {'topic': topic, 'payload': '{}'.format(conformNumber(status_data[status_line][i]))}
-                        msgs.append(msg)
-            publish.multiple(msgs, hostname=self.args.broker, port=self.args.brokerport,
-                             auth={'username': self.args.username, 'password': self.args.password})
-            log.debug(msgs)
-            log.debug(self.args.broker)
-            log.debug(status_data)
+                log.debug(status_data)
+        except:
+            log.error(sys.exc_info()[0])
 
 # Adafruit IO has:
 #    Battery Capacity (as %)         inverter-one-battery-capacity-percent

@@ -12,17 +12,18 @@ More info:
 - General community discussion: https://forums.aeva.asn.au/viewtopic.php?f=64&t=5955
 
 ## Notes
-- This app works in that it queries the inverter mostly-correctly, but only when utility power is available.
-- My personal goal is to integrate the unit into Home Assistant via an MQTT broker.
-- Lots of work to be done.
-- Home Assistant sensor definitions are present for most fields of interest in python_hints.txt
+- This app is now functional - it just need polishing.
+- My goal is to integrate the unit into Home Assistant via an MQTT broker.
+- Home Assistant sensor definitions are present for most fields of interest at the bottom of this file.
 
 ## TODO
-- Bi-directional communication (get and set via MQTT).
-- Double-check current payload/command definitions against protocol PDF.
-- Determine why queries fail when utility power goes away.
-- Make compliant with Python 3 (seems to mostly be a byte array vs str issue).
+- Bi-directional communication (get and set via MQTT) | This is partially working: the unit responds with ACK but doesn't apply the setting.
+- Double-check current payload/command definitions against protocol PDF. | Largely done.
+- Determine why queries fail when utility power goes away. | Done.
+- Make compliant with Python 3 (seems to mostly be a byte array vs str issue). | This is more complex than just .encode/.decode...
 - Publish HA auto-config payload.
+- Fix bug where terminal gets corrupted (funny characters).
+- Fix bug where synchronisation-like bug occurs causing "not all elements formatted" errors (they only last for one loop anyway).
 
 ## Thank you
 to the guy that wrote the original code (https://github.com/jblance/mpp-solar). I was so happy when 
@@ -38,20 +39,21 @@ to the guy that wrote the original code (https://github.com/jblance/mpp-solar). 
 
 ## Usage
 Run without installing:
-- Run once-off get/set:
+- Run once-off help:
 `python2 -c "import mppsolar; mppsolar.main()" -h`
 - Run MQTT publish:
 `python2 -c \"import mppsolar; import mppsolar.mpp_info_pub; mppsolar.mpp_info_pub.main()\" -d /dev/hidraw0 -q mqttiporhostname -u username -P password"`
 - Run MQTT publish as cron job:
 `* * * * * root /bin/bash -c "cd /home/aquarat/mppsolar; python2 -c \"import mppsolar; import mppsolar.mpp_info_pub; mppsolar.mpp_info_pub.main()\" -d /dev/hidraw0 -q mqttiporhostname -u username -P password";`
+or with custom query flags and various other TIDBITS:
+`/bin/bash -c "cd /home/aquarat/mppsolar; python2 -c \"import mppsolar; import mppsolar.mpp_info_pub; mppsolar.mpp_info_pub.main()\" -d /dev/hidraw0 -q 10.0.0.81 -u username -P password -D -I 30 -L -Q \"Q1,QPIGS,QMOD,QPIWS\"";`
 - See bottom for Home Assistant sensor definitions.
 - Payloads dispatched to broker look like this: `/inverters/92932001102598/status/is_load_on/value 1`
 
 ### Once-off query/set:
 `$ mpp-solar -h`
 ```
-usage: mpp-solar [-h] [-c COMMAND] [-D] [-d DEVICE] [-b BAUD] [-l] [-s] [-t]
-                 [-R]
+usage: -c [-h] [-c COMMAND] [-D] [-d DEVICE] [-b BAUD] [-l] [-s] [-t] [-R]
 
 MPP Solar Command Utility
 
@@ -67,7 +69,6 @@ optional arguments:
   -s, --getStatus       Get Inverter Status
   -t, --getSettings     Get Inverter Settings
   -R, --showraw         Display the raw results
-
 ```
 
 ## Available Commands
