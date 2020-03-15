@@ -48,7 +48,7 @@ class mppUtils:
 
         return self.serial_number
 
-    def getFullStatus(self, queries="Q1,QPIGS"):
+    def getFullStatus(self, queries="Q1,QPIGS", extraFlagData=False):
         """
         Helper function that returns all the status data
         """

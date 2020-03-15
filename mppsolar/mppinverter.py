@@ -204,35 +204,45 @@ class mppInverter:
         response_line = ""
         usb0 = None
         try:
-            usb0 = os.open(self._serial_device, os.O_RDWR | os.O_NONBLOCK)
-        except Exception as e:
-            log.debug('USB open error', e.strerror)
-            return command
-        # Send the command to the open usb connection
-        to_send = command.full_command
-        while (len(to_send) > 0):
-            # Split the full command into smaller chucks
-            send, to_send = to_send[:8], to_send[8:]
-            time.sleep(0.35)
-            os.write(usb0, send)
-        time.sleep(0.25)
-        # Read from the usb connection
-        # try to a max of 100 times
-        for x in range(100):
-            # attempt to deal with resource busy and other failures to read
             try:
-                time.sleep(0.15)
-                r = os.read(usb0, 256)
-                response_line += r
+                usb0 = os.open(self._serial_device, os.O_RDWR | os.O_NONBLOCK)
             except Exception as e:
-                log.debug('USB read error', e.strerror)
-            # Finished is \r is in response
-            if ('\r' in response_line):
-                # remove anything after the \r
-                response_line = response_line[:response_line.find('\r') + 1]
-                break
-        log.debug('usb response was: %s', response_line)
-        command.setResponse(response_line)
+                log.debug('USB open error', e.strerror)
+                return command
+            # Send the command to the open usb connection
+            to_send = command.full_command
+            while (len(to_send) > 0):
+                # Split the full command into smaller chucks
+                send, to_send = to_send[:8], to_send[8:]
+                time.sleep(0.35)
+                os.write(usb0, send)
+            time.sleep(0.25)
+            # Read from the usb connection
+            # try to a max of 100 times
+            for x in range(100):
+                # attempt to deal with resource busy and other failures to read
+                try:
+                    time.sleep(0.15)
+                    r = os.read(usb0, 256)
+                    response_line += r
+                except Exception as e:
+                    log.debug('USB read error')
+                # Finished is \r is in response
+                if ('\r' in response_line):
+                    # remove anything after the \r
+                    response_line = response_line[:response_line.find('\r') + 1]
+                    break
+            log.debug('usb response was: %s', response_line)
+            command.setResponse(response_line)
+        except:
+            pass
+
+        try:
+            if usb0 is not None:
+                os.close(usb0)
+        except:
+            pass
+
         return command
 
     locked = False
@@ -245,22 +255,33 @@ class mppInverter:
             time.sleep(0.1)
         self.locked = True
 
-        try:
-            command = self._getCommand(cmd)
-            doCommand = None
-            if command is None:
-                log.critical("Command not found")
-            elif (self._test_device):
-                log.debug('TEST connection: executing %s', command)
-                doCommand = self._doTestCommand(command)
-            elif (self._direct_usb):
-                log.debug('DIRECT USB connection: executing %s', command)
-                doCommand = self._doDirectUsbCommand(command)
-            else:
-                log.debug('SERIAL connection: executing %s', command)
-                doCommand = self._doSerialCommand(command)
-        except:
-            pass
+        doCommand = None
+
+        for i in range(0, 10):
+            try:
+                command = self._getCommand(cmd)
+
+                if command is None:
+                    log.critical("Command not found")
+                elif (self._test_device):
+                    log.debug('TEST connection: executing %s', command)
+                    doCommand = self._doTestCommand(command)
+                elif (self._direct_usb):
+                    log.debug('DIRECT USB connection: executing %s', command)
+                    doCommand = self._doDirectUsbCommand(command)
+                else:
+                    log.debug('SERIAL connection: executing %s', command)
+                    doCommand = self._doSerialCommand(command)
+            except:
+                pass
+
+            if doCommand.getResponse() is not None and doCommand.isResponseValid(doCommand.getResponse()):
+                break
+
+            log.debug("Received empty response. Retrying attempt {} of {}...".format(i, 10))
+            time.sleep(1)
+
+
         self.locked = False
 
         return doCommand

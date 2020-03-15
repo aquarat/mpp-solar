@@ -92,6 +92,10 @@ class MPPSolarMain:
                 return float(number)
             elif number.isdigit():
                 return int(number)
+            elif str(number).find("\t- ") > 0:
+                number = str(number)
+                number = number[number.find("- ")+2:]
+                return number
             else:
                 return number
         except:
@@ -170,18 +174,23 @@ class MPPSolarMain:
             for dev in self.devs:
                 # Collect Inverter Status data and publish
                 msgs = []
-                status_data = dev.getFullStatus(queries=self.args.queries)
+                status_data = dev.getFullStatus(queries=self.args.queries, extraFlagData=True)
                 for status_line in status_data:
                     for i in ['value', 'unit']:
                         if (self.args.publishunits and i is 'unit') or (
                                 self.args.publishunits is False and i is not 'unit'):
                             # 92931509101901/status/total_output_active_power/value 1250
                             # 92931509101901/status/total_output_active_power/unit W
-                            topic = '/{}/{}/status/{}/{}'.format(self.args.prefix, dev.serial_number, status_line, i)
-                            msg = {'topic': topic, 'payload': '{}'.format(self.conformNumber(status_data[status_line][i]))}
+                            topic = '/{}/{}/status/{}/{}'.format(self.args.prefix,
+                                                                 dev.serial_number,
+                                                                 status_line,
+                                                                 i)
+                            msg = {'topic': topic,
+                                   'payload': '{}'.format(self.conformNumber(status_data[status_line][i]))}
                             msgs.append(msg)
                 for msg in msgs:
-                    self.mq.publish(msg["topic"], payload=msg["payload"])
+                    self.mq.publish(msg["topic"],
+                                    payload=msg["payload"])
                 log.debug(msgs)
                 log.debug(self.args.broker)
                 log.debug(status_data)

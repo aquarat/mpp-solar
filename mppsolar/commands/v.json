@@ -1,0 +1,14 @@
+{
+    "name": "V",
+    "description": "Set the output AC voltage",
+    "help": "example V240 - set AC output voltage to 240V (220V/230V/240V)",
+    "type": "SETTER",
+    "response": [
+            ["ack", "Command execution", {"NAK": "Failed", "ACK": "Successful"}]
+        ],
+    "test_responses": [
+           "(NAKss\r",
+           "(ACK9 \r"
+        ],
+	"regex": "V(\\d\\d\\d)$"
+}

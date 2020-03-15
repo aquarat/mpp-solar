@@ -215,9 +215,8 @@ class mppCommand(object):
                 output = ''
                 for j, flag in enumerate(result):
                     if (flag == '1'):
-                        output = ('{}\n\t- {}'.format(output,
-                                                      resp_format[2][j]))
-                msgs[key] = [output, '']
+                        output = '{}'.format(resp_format[2][j]).lower().replace(" ", "_")
+                        msgs[output] = ['1', '']
             # eg. ['enflags', 'Device Status', {'a': {'name': 'Buzzer', 'state': 'disabled'},
             elif (resp_format[0] == 'enflags'):
                 # output = {}
@@ -228,8 +227,11 @@ class mppCommand(object):
                     elif (item == 'D'):
                         status = 'disabled'
                     else:
-                        # output[resp_format[2][item]['name']] = status
-                        msgs[resp_format[2][item]['name']] = [status, '']
+                        try:
+                            # output[resp_format[2][item]['name']] = status
+                            msgs[resp_format[2][item]['name']] = [status, '']
+                        except:
+                            pass
                 # msgs[key] = [output, '']
             elif self.command_type == 'SETTER':
                 msgs[self.name] = [result, '']
