@@ -50,11 +50,12 @@ def main():
     elif(args.getSettings):
         settings = mp.getSettings()
         print("================ Settings ==================")
-        print("{:<30}\t{:<10}\t{:<10} {}".format('Parameter', 'Default', 'Current', 'Unit'))
+        print("{:<30}\t{:<10}\t{:<10} {}".format('Parameter', 'Current', 'Unit', 'Default'))
         for key in sorted(settings):
-            print("{:<30}\t{:<10}\t{:<10} {}".format(key, settings[key]['default'],
+            print("{:<30}\t{:<10}\t{:<10} {}".format(key,
                                                      settings[key]['value'],
-                                                     settings[key]['unit']))
+                                                     settings[key]['unit'],
+                                                     settings[key]['default']))
     else:
         # TODO: check if command is valid
         # maybe check if query or setter and ...
