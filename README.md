@@ -10,25 +10,30 @@ Also known as:
 More info:
 - Protocol definition: https://forums.aeva.asn.au/download/file.php?id=1376
 - General community discussion: https://forums.aeva.asn.au/viewtopic.php?f=64&t=5955
+- South African Power Forum: https://powerforum.co.za/topic/5343-beta-patched-firmware-version-7440e/?tab=comments#comment-71807
 
 ## Pictures
-![HA Lovelace Card](/images/ha-lovelace-card.png?raw=true "A Lovelace card in the Home Assistant web interface.")
-![HA Graph](/images/example-ha-graph.png?raw=true "A Lovelace graph in the Home Assistant web interface.")
-![RPi Zero W](/images/rpi-zero-w-backpowered.jpg?raw=true "An RPi Zero W being back-powered from the inverter's USB OTG port.")
+<p align="center">
+  <img src="https://github.com/aquarat/mpp-solar/blob/master/images/ha-lovelace-card.png?raw=true" alt="A Lovelace card in the Home Assistant web interface."/>
+  <img src="https://github.com/aquarat/mpp-solar/blob/master/images/example-ha-graph.png?raw=true" alt="A Lovelace card in the Home Assistant web interface."/>
+  <img src="https://github.com/aquarat/mpp-solar/blob/master/images/rpi-zero-w-backpowered.jpg?raw=true" alt="An RPi Zero W being back-powered from the inverter's USB OTG port."/>
+</p>
 
 ## Notes
 - This app is now functional - it just needs polishing.
 - My goal is to integrate my Axpert King inverter into Home Assistant via an MQTT broker.
 - Home Assistant sensor definitions are present for most fields of interest at the bottom of this file.
+- This application should be able to handle multiple inverters, but I don't have multiple inverters to test it with.
 
 ## TODO
-- Bi-directional communication (get and set via MQTT) | This is partially working: the unit responds with ACK but doesn't apply the setting.
-- Double-check current payload/command definitions against protocol PDF. | Largely done.
-- Determine why queries fail when utility power goes away. | Done.
-- Make compliant with Python 3 (seems to mostly be a byte array vs str issue). | This is more complex than just .encode/.decode...
-- Publish HA auto-config payload.
-- Fix bug where terminal gets corrupted (funny characters).
-- Fix bug where synchronisation-like bug occurs causing "not all elements formatted" errors (they only last for one loop anyway).
+- [x] Bi-directional communication (get and set via MQTT). This currently works for a limited subset of commands. Some documented commands respond with an ACK but don't actually apply the setting.
+- [ ] Double-check current payload/command definitions against protocol PDF. (Largely done)
+- [x] Determine why queries fail when utility power goes away.
+- [x] Make compliant with Python 3.
+- [ ] Publish HA auto-config payload.
+- [ ] Fix bug where terminal gets corrupted (funny characters).
+- [ ] Fix bug where synchronisation-like bug occurs causing "not all elements formatted" errors (they only last for one loop anyway).
+- [ ] Add hardware flow control (will have to use PySerial probably).
 
 ## Thank you
 to the guy that wrote the original code (https://github.com/jblance/mpp-solar). I was so happy when 
