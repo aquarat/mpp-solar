@@ -6,11 +6,28 @@ mppcommand.py
 import ctypes
 import logging
 import random
+import sys
+
+ENCODING = 'onetoone'
 
 log = logging.getLogger('MPP-Solar')
 
 
+def is_py3():
+    if sys.version_info[0] < 3:
+        return False
+
+    return True
+
+
 def crc(cmd):
+    if is_py3():
+        return py3_crc(cmd)
+
+    return py2_crc(cmd)
+
+
+def py2_crc(cmd):
     """
     Calculates CRC for supplied text
     """
@@ -51,6 +68,50 @@ def crc(cmd):
     return [crc_high, crc_low]
 
 
+def py3_crc(cmd):
+    """
+    Calculates CRC for supplied text
+    """
+    log.info('Calculating CRC for %s', cmd)
+
+    crc = 0
+    da = 0
+    crc_ta = [0x0000, 0x1021, 0x2042, 0x3063,
+              0x4084, 0x50a5, 0x60c6, 0x70e7,
+              0x8108, 0x9129, 0xa14a, 0xb16b,
+              0xc18c, 0xd1ad, 0xe1ce, 0xf1ef]
+
+    if type(cmd) == type('string'):
+        cmd = cmd.encode(ENCODING)
+
+    for c in cmd:
+        # log.debug('Encoding %s', c)
+        t_da = ctypes.c_uint8(crc >> 8)
+        da = t_da.value >> 4
+        crc <<= 4
+        index = da ^ (c >> 4)
+        crc ^= crc_ta[index]
+        t_da = ctypes.c_uint8(crc >> 8)
+        da = t_da.value >> 4
+        crc <<= 4
+        index = da ^ (c & 0x0f)
+        crc ^= crc_ta[index]
+
+    crc_low = ctypes.c_uint8(crc).value
+    crc_high = ctypes.c_uint8(crc >> 8).value
+
+    if crc_low == 0x28 or crc_low == 0x0d or crc_low == 0x0a:
+        crc_low += 1
+    if crc_high == 0x28 or crc_high == 0x0d or crc_high == 0x0a:
+        crc_high += 1
+
+    crc = crc_high << 8
+    crc += crc_low
+
+    log.debug('Generated CRC %x %x %x', crc_high, crc_low, crc)
+    return [crc_high, crc_low]
+
+
 def get_full_command(cmd):
     """
     Generates a full command including CRC and CR
@@ -70,7 +131,7 @@ class mppCommand(object):
 
     def __str__(self):
         """ String representation of the command (including response) """
-        if(self.response is None or len(self.response) < 3):
+        if (self.response is None or len(self.response) < 3):
             response = ""
             response_dict = ""
         else:
@@ -79,7 +140,8 @@ class mppCommand(object):
         result = "{}\n{}\n{}\n{}\n{}".format(self.name, self.description, self.help, response, response_dict)
         return result
 
-    def __init__(self, name, description, command_type, response_definition, test_responses=[], regex="", value=None, help=""):
+    def __init__(self, name, description, command_type, response_definition, test_responses=[], regex="", value=None,
+                 help=""):
         """ Return a command object """
         self.name = name
         self.description = description
@@ -129,6 +191,9 @@ class mppCommand(object):
             - check CRC is correct
         """
         # Check length of response
+        log.debug("IS RESP VALID {}".format(response))
+        if is_py3():
+            response = response.encode(ENCODING)
         log.debug('Response length: %d', len(response))
         if len(response) < 3:
             log.debug('Response invalid as too short')
@@ -136,31 +201,47 @@ class mppCommand(object):
         # Check we got a CRC response that matches the data
         resp = response[:-3]
         resp_crc = response[-3:-1]
-        log.debug('CRC resp\t%x %x', ord(resp_crc[0]), ord(resp_crc[1]))
+        if is_py3():
+            log.debug('CRC resp\t%x %x', resp_crc[0], resp_crc[1])
+        else:
+            log.debug('CRC resp py2\t%x %x', ord(resp_crc[0]), ord(resp_crc[1]))
         calc_crc_h, calc_crc_l = crc(resp)
+
         log.debug('CRC calc\t%x %x', calc_crc_h, calc_crc_l)
-        if ((ord(resp_crc[0]) == calc_crc_h) and (ord(resp_crc[1]) == calc_crc_l)):
+
+        if (is_py3() and (resp_crc[0] == calc_crc_h) and (resp_crc[1] == calc_crc_l)) \
+                or (not is_py3() and (ord(resp_crc[0]) == calc_crc_h) and (ord(resp_crc[1]) == calc_crc_l)):
             log.debug('CRCs match')
         else:
-            log.debug('Response invalid as calculated CRC does not match response CRC')
+            log.debug('Response invalid as calculated CRC does not' +
+                      ' match response CRC: .{}. .{}. vs .{}. .{}.'.format(resp_crc[0],
+                                                                           calc_crc_h,
+                                                                           resp_crc[1],
+                                                                           calc_crc_l))
             return False
         # Check if this is a query or set command
-        if (self.command_type == 'SETTER'):
-            if (response == '(ACK9 \r'):
+        if self.command_type == 'SETTER':
+            if response == '(ACK9 \r':
                 log.debug('Response valid as setter with ACK resp')
                 return True
-            if (response == '(NAKss\r'):
+            if response == '(NAKss\r':
                 log.debug('Response valid as setter with NAK resp')
                 return True
             return False
         # Check if valid response is defined for this command
-        if (self.response_definition is None):
+        if self.response_definition is None:
             log.debug('Response invalid as no RESPONSE defined for %s', self.name)
             return False
         # Check we got the expected number of responses
-        responses = response.split(" ")
-        if (len(responses) < len(self.response_definition)):
-            log.error("Response invalid as insufficient number of elements in response. Got %d, expected as least %d", len(responses), len(self.response_definition))
+        responses = None
+        if is_py3():
+            responses = response.decode(ENCODING).split(" ")
+        else:
+            responses = response.split(" ")
+
+        if len(responses) < len(self.response_definition):
+            log.error("Response invalid as insufficient number of elements in response. Got %d, expected as least %d",
+                      len(responses), len(self.response_definition))
             return False
         log.debug('Response valid as no invalid situations found')
         return True
@@ -171,13 +252,13 @@ class mppCommand(object):
         """
         msgs = {}
 
-        if (self.response is None):
+        if self.response is None:
             log.info('No response')
             return msgs
-        if (not self.valid_response):
+        if not self.valid_response:
             log.info('Invalid response')
             return msgs
-        if (self.response_definition is None):
+        if self.response_definition is None:
             log.info('No response definition')
             return msgs
 
@@ -195,12 +276,10 @@ class mppCommand(object):
                 msgs[key] = [result, resp_format[2]]
             # eg. ['option', 'Output source priority', ['Utility first', 'Solar first', 'SBU first']],
             elif (resp_format[0] == 'option'):
-                print("option", int(result))
                 if len(resp_format[2]) > int(result):
                     msgs[key] = [resp_format[2][int(result)], '']
                 else:
                     msgs[key] = [result, '']
-                    print("BLEH")
 
             # eg. ['keyed', 'Machine type', {'00': 'Grid tie', '01': 'Off Grid', '10': 'Hybrid'}],
             elif (resp_format[0] == 'keyed'):
@@ -208,7 +287,6 @@ class mppCommand(object):
             # eg. ['flags', 'Device status', [ 'is_load_on', 'is_charging_on' ...
             elif (resp_format[0] == 'flags'):
                 for j, flag in enumerate(result):
-                    print("flags", j, flag)
                     msgs[resp_format[2][j]] = [int(flag), 'True - 1/False - 0']
             # eg. ['stat_flags', 'Warning status', ['Reserved', 'Inver...
             elif (resp_format[0] == 'stat_flags'):

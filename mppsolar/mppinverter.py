@@ -3,6 +3,8 @@ MPP Solar Inverter Command Library
 reference library of serial commands (and responses) for PIP-4048MS inverters
 mppinverter.py
 """
+import sys
+import traceback
 
 import serial
 import time
@@ -13,9 +15,16 @@ import glob
 import os
 from os import path
 
-from .mppcommand import mppCommand
+from .mppcommand import mppCommand, ENCODING
 
 log = logging.getLogger('MPP-Solar')
+
+
+def is_py3():
+    if sys.version_info[0] < 3:
+        return False
+
+    return True
 
 
 class MppSolarError(Exception):
@@ -44,7 +53,8 @@ def getDataValue(data, key):
     else:
         return ""
 
-#file:///home/aquarat/Downloads/PIP-GK_MK%20Protocol.pdf
+
+# file:///home/aquarat/Downloads/PIP-GK_MK%20Protocol.pdf
 def getCommandsFromJson():
     """
     Read in all the json files in the commands subdirectory
@@ -53,6 +63,7 @@ def getCommandsFromJson():
     COMMANDS = []
     here = path.abspath(path.dirname(__file__))
     files = glob.glob(here + '/commands/*.json')
+
     for file in sorted(files):
         log.debug("Loading command information from {}".format(file))
         with open(file) as f:
@@ -215,6 +226,8 @@ class mppInverter:
                 # Split the full command into smaller chucks
                 send, to_send = to_send[:8], to_send[8:]
                 time.sleep(0.35)
+                if is_py3():
+                    send = send.encode(ENCODING)
                 os.write(usb0, send)
             time.sleep(0.25)
             # Read from the usb connection
@@ -224,6 +237,8 @@ class mppInverter:
                 try:
                     time.sleep(0.15)
                     r = os.read(usb0, 256)
+                    if is_py3():
+                        r = r.decode(ENCODING)
                     response_line += r
                 except Exception as e:
                     log.debug('USB read error')
@@ -234,8 +249,9 @@ class mppInverter:
                     break
             log.debug('usb response was: %s', response_line)
             command.setResponse(response_line)
-        except:
-            pass
+        except Exception as err:
+            log.error(err)
+            traceback.print_exc()
 
         try:
             if usb0 is not None:
@@ -272,15 +288,15 @@ class mppInverter:
                 else:
                     log.debug('SERIAL connection: executing %s', command)
                     doCommand = self._doSerialCommand(command)
-            except:
-                pass
+            except Exception as err:
+                log.error(sys.exc_info()[0])
+                log.error(err)
 
             if doCommand.getResponse() is not None and doCommand.isResponseValid(doCommand.getResponse()):
                 break
 
             log.debug("Received empty response. Retrying attempt {} of {}...".format(i, 10))
             time.sleep(1)
-
 
         self.locked = False
 
